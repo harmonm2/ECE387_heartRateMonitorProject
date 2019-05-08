@@ -1,0 +1,230 @@
+#define USE_ARDUINO_INTERRUPTS true
+#include <SoftwareSerial.h>
+#include <PulseSensorPlayground.h>
+
+// Defining pins based on color
+#define ledPinBlue 5
+#define ledPinGreen 6
+#define ledPinRed 7
+#define ledPinYellow 8
+#define ledPinWhite 9
+
+// Defining pins for pulse sensor
+const int PulseWire = 0;
+int Threshold = 550;  // ignore singals that are not heart beat
+PulseSensorPlayground pulseSensor;
+
+// Defining motor
+int motorPin = 3;
+int speed = 0;
+
+// Activity state received from app
+int state = 0;
+
+void setup() {
+  Serial.begin(9600);
+
+  // Pin setup for LEDs
+  pinMode(ledPinBlue, OUTPUT);
+  pinMode(ledPinGreen, OUTPUT);
+  pinMode(ledPinRed, OUTPUT);
+  pinMode(ledPinYellow, OUTPUT);
+  pinMode(ledPinWhite, OUTPUT);
+
+  // Configuration for pulse sensor
+  pulseSensor.analogInput(PulseWire);
+  pulseSensor.setThreshold(Threshold);
+  if (pulseSensor.begin()) {
+    Serial.println("We created a pulseSensor Object !");  //This prints one time at Arduino power-up,  or on Arduino reset.
+  }
+
+  // Configuration for motor
+  pinMode(motorPin, OUTPUT);
+
+  // Bluetooth setup
+  //Serial.print("hello world");
+  delay(2000);
+
+  // AT+NAMEXXX where XXX is the new name
+  Serial.print("AT+NAMEBluoothy");
+  delay(2000);
+
+  // AT+PINXXXX where XXXX new code (4 number)
+  Serial.print("AT+PIN1997");
+  delay(2000);
+
+  // AT+BAUDX where X from 1 to 8
+  // 1 -> 1200 Bauds
+  // 2 -> 2400 Bauds
+  // 3 -> 4800 Bauds
+  // 4 -> 9600 Bauds
+  // 5 -> 19200 Bauds
+  // 6 -> 38400 Bauds
+  // 7 -> 57600 Bauds
+  // 8 -> 115200 Bauds
+  Serial.print("AT+BAUD6");
+}
+void loop() {
+  // LED code for changing state and lighting led
+  if (Serial.available() > 0) { // Checks whether data is comming from the serial port
+    state = Serial.read(); // Reads the data from the serial port
+    Serial.println(state);
+  }
+  // Moderate Activity State
+  if (state == '0') {
+    digitalWrite(ledPinBlue, HIGH);
+    digitalWrite(ledPinGreen, LOW);
+    digitalWrite(ledPinRed, LOW);
+    digitalWrite(ledPinYellow, LOW);
+    digitalWrite(ledPinWhite, LOW);
+  }
+  // Weight Control State
+  else   if (state == '1') {
+    digitalWrite(ledPinGreen, HIGH);
+    digitalWrite(ledPinBlue, LOW);
+    digitalWrite(ledPinRed, LOW);
+    digitalWrite(ledPinYellow, LOW);
+    digitalWrite(ledPinWhite, LOW);
+  }
+  // Aerobic State
+  else   if (state == '2') {
+    digitalWrite(ledPinRed, HIGH);
+    digitalWrite(ledPinGreen, LOW);
+    digitalWrite(ledPinBlue, LOW);
+    digitalWrite(ledPinYellow, LOW);
+    digitalWrite(ledPinWhite, LOW);
+  }
+  // Anaerobic State
+  else   if (state == '3') {
+    digitalWrite(ledPinYellow, HIGH);
+    digitalWrite(ledPinGreen, LOW);
+    digitalWrite(ledPinRed, LOW);
+    digitalWrite(ledPinBlue, LOW);
+    digitalWrite(ledPinWhite, LOW);
+  }
+  // VO2 Max State
+  else   if (state == '4') {
+    digitalWrite(ledPinWhite, HIGH);
+    digitalWrite(ledPinGreen, LOW);
+    digitalWrite(ledPinRed, LOW);
+    digitalWrite(ledPinYellow, LOW);
+    digitalWrite(ledPinBlue, LOW);
+  }
+
+  // Pulse sensor
+  int myBPM = pulseSensor.getBeatsPerMinute();
+
+
+
+  while (pulseSensor.sawStartOfBeat()) {// Constantly test to see if "a beat happened".
+    Serial.println(myBPM);
+    switch (state) {
+      // Moderate Activity State
+      case '0':
+        if (myBPM > 108 && myBPM < 112) {
+          delay(5000);
+        }
+        // speed too low
+        else if ((myBPM < 100) && (speed < 230)) {
+          //analogWrite(motorPin, 125);
+          speed = speed + 5;
+          analogWrite(motorPin, speed);
+          //Serial.println("Im here! speed low");
+          //Serial.println("Speed " + speed);
+        }
+        // speed is too high
+        else if (myBPM > 120) {
+          if (speed > 0) {
+            speed = speed - 5;
+          }
+          analogWrite(motorPin, speed);
+          //Serial.println("Im here! speed high");
+          //Serial.println("Speed" + speed);
+        }
+        break;
+
+      // Weight Control State
+      case '1':
+        if (myBPM > 128 && myBPM < 132) {
+          delay(5000);
+        }
+        // speed too low
+        else if ((myBPM < 120) && (speed < 230)) {
+          speed = speed + 5;
+          analogWrite(motorPin, speed);
+        }
+        // speed is too high
+        else if (myBPM > 139) {
+          if (speed > 0) {
+            speed = speed - 5;
+          }
+          analogWrite(motorPin, speed);
+        }
+        break;
+
+      // Aerobic State
+      case '2':
+        if (myBPM > 148 && myBPM < 152) {
+          delay(5000);
+        }
+        // speed too low
+        else if ((myBPM < 140) && (speed < 230)) {
+          speed = speed + 5;
+          analogWrite(motorPin, speed);
+        }
+        // speed is too high
+        else if (myBPM > 159) {
+          if (speed > 0) {
+            speed = speed - 5;
+          }
+          analogWrite(motorPin, speed);
+        }
+        break;
+
+      // Anaerobic State
+      case '3':
+        if (myBPM > 168 && myBPM < 172) {
+          delay(5000);
+        }
+        // speed too low
+        else if ((myBPM < 160) && (speed < 230)) {
+          speed = speed + 5;
+          analogWrite(motorPin, speed);
+        }
+        // speed is too high
+        else if (myBPM > 179) {
+          if (speed > 0) {
+            speed = speed - 5;
+          }
+          analogWrite(motorPin, speed);
+        }
+        break;
+
+      // VO2 Max State
+      case '4':
+        if (myBPM > 188 && myBPM < 192) {
+          delay(5000);
+        }
+        // speed too low
+        else if ((myBPM < 180) && (speed < 230)) {
+          speed = speed + 5;
+          analogWrite(motorPin, speed);
+        }
+        // speed is too high
+        else if (myBPM > 200) {
+          if (speed > 0) {
+            speed = speed - 5;
+          }
+          analogWrite(motorPin, speed);
+        }
+        break;
+
+      // if no states match
+      default:
+        break;
+    }
+  }
+
+  delay(20);
+
+}
